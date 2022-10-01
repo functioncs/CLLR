@@ -18,6 +18,6 @@ Run the following command to evaluate the model by (training) a linear classifie
 python linear.py --model_path results/xxx.pth
 ```
 
-A pretrained model can be downloaded from [here](https://drive.google.com/file/d/1d8nfGHsHIuJYjU7mHtCtSXf98IbWMFAa/view?usp=sharing)
+A pretrained model can be downloaded from [here](https://drive.google.com/file/d/1a443-NqMlZpq0hlIoGuTDcpqPxtouFY1/view?usp=sharing)
 
 This code is mainly inspired by [SimCLR](https://github.com/leftthomas/SimCLR).
