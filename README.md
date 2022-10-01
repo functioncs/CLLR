@@ -7,13 +7,13 @@ Contrastive Learning with Low-Dimensional Reconstruction
 - PIL
 
 ## Training
-Run the following command to train a low-dimensional encoder.
+Run the following command to train a low-dimensional encoder
 ```
 python cl_train.py
 ```
 
 ## Test
-Evaluate the model by (training) a linear classifier
+Run the following command to evaluate the model by (training) a linear classifier
 ```
 python linear.py --model_path results/xxx.pth
 ```
