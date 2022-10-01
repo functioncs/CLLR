@@ -15,7 +15,7 @@ python cl_train.py
 ## Test
 Run the following command to evaluate the model by (training) a linear classifier
 ```
-python linear.py --model_path results/xxx.pth
+python cl_test.py --model_path results/xxx.pth
 ```
 
 A pretrained model can be downloaded from [here](https://drive.google.com/file/d/1a443-NqMlZpq0hlIoGuTDcpqPxtouFY1/view?usp=sharing)
