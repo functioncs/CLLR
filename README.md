@@ -1,7 +1,7 @@
 # CLLR
 Contrastive Learning with Low-Dimensional Reconstruction
 
-## Prerequisites
+## Installation
 - Python 3.8 
 - PyTorch 1.13
 - PIL
