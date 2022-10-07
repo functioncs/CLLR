@@ -23,13 +23,13 @@ def get_negative_mask(batch_size):
     return negative_mask
 
 
-def train(net, data_loader, train_optimizer, temperature, debiased, tau_plus):
+def train(net, data_loader, train_optimizer, temperature, debiased, tau_plus, alpha):
     net.train()
     total_loss, total_num, train_bar = 0.0, 0, tqdm(data_loader)
     for pos_1, pos_2, target in train_bar:
         pos_1, pos_2 = pos_1.cuda(non_blocking=True), pos_2.cuda(non_blocking=True)
-        feature_1, out_1 = net(pos_1)
-        feature_2, out_2 = net(pos_2)
+        feature_1, out_1, re_feature_1 = net(pos_1)
+        feature_2, out_2, re_feature_2 = net(pos_2)
 
         # neg score
         out = torch.cat([out_1, out_2], dim=0)
@@ -42,16 +42,21 @@ def train(net, data_loader, train_optimizer, temperature, debiased, tau_plus):
         pos = torch.cat([pos, pos], dim=0)
 
         # estimator g()
-        if debiased:
+        '''if debiased:
             N = batch_size * 2 - 2
             Ng = (-tau_plus * N * pos + neg.sum(dim = -1)) / (1 - tau_plus)
             # constrain (optional)
             Ng = torch.clamp(Ng, min = N * np.e**(-1 / temperature))
-        else:
-            Ng = neg.sum(dim=-1)
+        else:'''
+        Ng = neg.sum(dim=-1)
+
+        # reconstruction
+        re_diff = (torch.norm(feature_1 - re_feature_1, p='fro') + torch.norm(feature_2 - re_feature_2, p='fro'))/batch_size
 
         # contrastive loss
-        loss = (- torch.log(pos / (pos + Ng) )).mean()
+        contrast_loss = (- torch.log(pos / (pos + Ng) )).mean()  
+        
+        loss = contrast_loss  +  alpha * re_diff
 
         train_optimizer.zero_grad()
         loss.backward()
@@ -72,7 +77,7 @@ def test(net, memory_data_loader, test_data_loader):
     with torch.no_grad():
         # generate feature bank
         for data, _, target in tqdm(memory_data_loader, desc='Feature extracting'):
-            feature, out = net(data.cuda(non_blocking=True))
+            feature, out, re_feature = net(data.cuda(non_blocking=True))
             feature_bank.append(feature)
         # [D, N]
         feature_bank = torch.cat(feature_bank, dim=0).t().contiguous()
@@ -82,7 +87,7 @@ def test(net, memory_data_loader, test_data_loader):
         test_bar = tqdm(test_data_loader)
         for data, _, target in test_bar:
             data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
-            feature, out = net(data)
+            feature, out, re_feature = net(data)
 
             total_num += data.size(0)
             # compute cos similarity between each feature vector and feature bank ---> [B, N]
@@ -115,17 +120,18 @@ if __name__ == '__main__':
     parser.add_argument('--temperature', default=0.5, type=float, help='Temperature used in softmax')
     parser.add_argument('--tau_plus', default=0.1, type=float, help='Positive class priorx')
     parser.add_argument('--k', default=200, type=int, help='Top k most similar images used to predict the label')
-    parser.add_argument('--batch_size', default=256, type=int, help='Number of images in each mini-batch')
-    parser.add_argument('--epochs', default=500, type=int, help='Number of sweeps over the dataset to train')
+    parser.add_argument('--batch_size', default=1024, type=int, help='Number of images in each mini-batch')
+    parser.add_argument('--epochs', default=400, type=int, help='Number of sweeps over the dataset to train')
     parser.add_argument('--debiased', default=True, type=bool, help='Debiased contrastive loss or standard loss')
+    parser.add_argument('--alpha', default=0.1, type=bool, help='Regularization parameter')
 
     # args parse
     args = parser.parse_args()
     feature_dim, temperature, tau_plus, k = args.feature_dim, args.temperature, args.tau_plus, args.k
-    batch_size, epochs, debiased = args.batch_size, args.epochs,  args.debiased
+    batch_size, epochs, debiased, alpha = args.batch_size, args.epochs,  args.debiased, args.alpha
 
     # data prepare
-    train_data = utils.STL10Pair(root='data', split='train+unlabeled', transform=utils.train_transform)
+    train_data = utils.STL10Pair(root='data', split='train+unlabeled', transform=utils.train_transform, download=True)
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True,
                               drop_last=True)
     memory_data = utils.STL10Pair(root='data', split='train', transform=utils.test_transform)
@@ -145,7 +151,7 @@ if __name__ == '__main__':
     if not os.path.exists('results'):
         os.mkdir('results')
     for epoch in range(1, epochs + 1):
-        train_loss = train(model, train_loader, optimizer, temperature, debiased, tau_plus)
-        if epoch % 25 == 0:
+        train_loss = train(model, train_loader, optimizer, temperature, debiased, tau_plus, alpha)
+        if epoch % 10 == 0:
             test_acc_1, test_acc_5 = test(model, memory_loader, test_loader)
             torch.save(model.state_dict(), 'results/model_{}.pth'.format(epoch))

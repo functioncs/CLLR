@@ -19,9 +19,15 @@ class Model(nn.Module):
         # projection head
         self.g = nn.Sequential(nn.Linear(2048, 512, bias=False), nn.BatchNorm1d(512),
                                nn.ReLU(inplace=True), nn.Linear(512, feature_dim, bias=True))
+        # reconstruction
+        self.r = nn.Parameter(torch.randn(512, 2048))
+        #self.rr = nn.Parameter(torch.randn(512, 2048))
 
     def forward(self, x):
         x = self.f(x)
         feature = torch.flatten(x, start_dim=1)
         out = self.g(feature)
-        return F.normalize(feature, dim=-1), F.normalize(out, dim=-1)
+        low_feature = F.linear(feature, self.r)
+        re_feature = F.linear(low_feature, self.r.t().contiguous())
+
+        return F.normalize(feature, dim=-1), F.normalize(out, dim=-1), F.normalize(re_feature, dim=-1)
