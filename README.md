@@ -4,7 +4,7 @@ Contrastive Learning with Low-Dimensional Reconstruction
 ## Installation
 - Python 3.8 
 - PyTorch 1.13
-- PIL
+- OpenCV
 
 ## Training
 Run the following command to train a low-dimensional encoder
