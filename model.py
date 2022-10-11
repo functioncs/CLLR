@@ -5,7 +5,7 @@ from torchvision.models.resnet import resnet50
 
 
 class Model(nn.Module):
-    def __init__(self, feature_dim=128):
+    def __init__(self, feature_dim):
         super(Model, self).__init__()
 
         self.f = []
